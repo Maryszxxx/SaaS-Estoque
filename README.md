@@ -1,0 +1,5 @@
+entity: 
+
+user 
+product 
+category
