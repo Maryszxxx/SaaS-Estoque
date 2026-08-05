@@ -1,6 +1,9 @@
 package usercase
 
-import "saas-estoque/entity"
+import (
+	"saas-estoque/entity"
+	"saas-estoque/repository"
+)
 
 type ProductUseCase interface {
 	Create(product entity.Product) error
@@ -17,5 +20,9 @@ type UserUseCase interface {
 }
 
 type LoginUserUseCase interface {
-	Login(email, password string)
+	Login(email, password string) (string, error) //caso retorne um jwt
+}
+
+type ProductService struct {
+	repository repository.ProductRepository
 }
