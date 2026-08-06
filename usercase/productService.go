@@ -15,6 +15,18 @@ func NewProductService(repository repository.ProductRepository) *ProductService 
 	}
 }
 
+func (p *ProductService) Update(id int64, name string, description string, price float64, quantity int64, categoryID int64) error {
+	product := entity.Product{
+		ID:          id,
+		Name:        name,
+		Description: description,
+		Price:       price,
+		Quantity:    quantity,
+		CategoryID:  categoryID,
+	}
+	return p.repository.Update(&product)
+}
+
 func (p *ProductService) Create(name string, description string, price float64, quantity int64, categoryID int64,
 ) error {
 	product, err := entity.NewProduct(
@@ -28,12 +40,13 @@ func (p *ProductService) Create(name string, description string, price float64, 
 		return err
 	}
 
-	return p.repository.Save(*product)
+	return p.repository.Save(product)
 }
 
-func (p *ProductService) FindById(id int64) (*entity.Product, error) {
-	product, err := entity.User{ID: id}
-	if err != nil {
-		return nil, err
-	}
+func (p *ProductService) FindByID(id int64) (*entity.Product, error) {
+	return p.repository.FindByID(id)
+}
+
+func (p *ProductService) FindAll() ([]entity.Product, error) {
+	return p.repository.FindAll()
 }

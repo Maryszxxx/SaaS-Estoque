@@ -14,12 +14,12 @@ func NewProductMemoryRepository() *ProductMemoryRepository {
 	return &ProductMemoryRepository{products: make(map[int64]entity.Product)}
 }
 
-func (p *ProductMemoryRepository) FindByID(productID int64) (entity.Product, error) {
+func (p *ProductMemoryRepository) FindByID(productID int64) (*entity.Product, error) {
 	product, ok := p.products[productID]
 	if !ok {
-		return entity.Product{}, errors.New("product not found")
+		return nil, errors.New("product not found")
 	}
-	return product, nil
+	return &product, nil
 
 }
 
