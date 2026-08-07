@@ -25,3 +25,6 @@ func Delete(c *gin.Context) {
 func Get(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"method": "GET"})
 }
+func GetById(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"method": "GET"})
+}

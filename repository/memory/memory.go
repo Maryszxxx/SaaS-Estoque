@@ -14,6 +14,16 @@ func NewProductMemoryRepository() *ProductMemoryRepository {
 	return &ProductMemoryRepository{products: make(map[int64]entity.Product)}
 }
 
+func (p *ProductMemoryRepository) Patch(product *entity.Product) error {
+	if _, ok := p.products[product.ID]; !ok {
+		return errors.New("product not found")
+	}
+
+	p.products[product.ID] = *product
+
+	return nil
+}
+
 func (p *ProductMemoryRepository) FindByID(productID int64) (*entity.Product, error) {
 	product, ok := p.products[productID]
 	if !ok {
@@ -54,23 +64,6 @@ func (p *ProductMemoryRepository) Update(product *entity.Product) error {
 	}
 
 	p.products[product.ID] = *product
-
-	return nil
-}
-
-func (p *ProductMemoryRepository) Patch(product *entity.Product) error {
-	existingProduct, ok := p.products[product.ID]
-	if !ok {
-		return errors.New("product not found")
-	}
-
-	existingProduct.Name = product.Name
-	existingProduct.Description = product.Description
-	existingProduct.Price = product.Price
-	existingProduct.Quantity = product.Quantity
-	existingProduct.CategoryID = product.CategoryID
-
-	p.products[product.ID] = existingProduct
 
 	return nil
 }

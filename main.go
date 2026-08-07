@@ -17,9 +17,10 @@ func main() {
 	r := gin.Default()
 
 	r.POST("/products", h.Create)
-	r.GET("/products", h.Get)
-	r.GET("/products/:id", h.Get)
-	r.PUT("/products/:id", h.Update)
+	r.GET("/products", h.Get)         //findAll
+	r.GET("/products/:id", h.GetById) //findById
+	r.PUT("/products/:id", h.Update)  //put
+	r.PATCH("/products/:id", h.Patch) //patch
 	r.DELETE("/products/:id", h.Delete)
 
 	r.Run(":8080")
