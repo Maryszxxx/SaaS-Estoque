@@ -9,11 +9,11 @@ import (
 )
 
 type CreateProductRequest struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	Quantity    int64   `json:"quantity"`
-	CategoryID  int64   `json:"category_id"`
+	Name        string  `json:"name" binding:"required,min=4,max=90"`
+	Description string  `json:"description" binding:"required, min=4"`
+	Price       float64 `json:"price" binding:"required,gt=0"`
+	Quantity    int64   `json:"quantity" binding:"required,gt=0"`
+	CategoryID  int64   `json:"category_id" binding:"required,gt=0"`
 }
 
 type ProductHandler struct {
@@ -38,6 +38,38 @@ func (h *ProductHandler) Create(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "Product created successfully"})
+}
+
+func (h *ProductHandler) Patch(c *gin.Context) {
+	product := &CreateProductRequest{}
+
+	if err := c.ShouldBindJSON(product); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	id := c.Param("id")
+
+	idInt, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = h.service.Patch(
+		idInt,
+		product.Name,
+		product.Description,
+		product.Price,
+		product.Quantity,
+		product.CategoryID,
+	)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Product updated successfully"})
 }
 
 func (h *ProductHandler) Update(c *gin.Context) {

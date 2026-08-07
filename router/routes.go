@@ -14,6 +14,10 @@ func Update(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"method": "PUT"})
 }
 
+func UpdatePatch(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"method": "PATCH"})
+}
+
 func Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"method": "DELETE"})
 }

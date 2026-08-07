@@ -57,3 +57,20 @@ func (p *ProductMemoryRepository) Update(product *entity.Product) error {
 
 	return nil
 }
+
+func (p *ProductMemoryRepository) Patch(product *entity.Product) error {
+	existingProduct, ok := p.products[product.ID]
+	if !ok {
+		return errors.New("product not found")
+	}
+
+	existingProduct.Name = product.Name
+	existingProduct.Description = product.Description
+	existingProduct.Price = product.Price
+	existingProduct.Quantity = product.Quantity
+	existingProduct.CategoryID = product.CategoryID
+
+	p.products[product.ID] = existingProduct
+
+	return nil
+}

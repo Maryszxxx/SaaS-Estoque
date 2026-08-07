@@ -27,6 +27,18 @@ func (p *ProductService) Update(id int64, name string, description string, price
 	return p.repository.Update(&product)
 }
 
+func (p *ProductService) Patch(id int64, name string, description string, price float64, quantity int64, categoryID int64) error {
+	product := entity.Product{
+		ID:          id,
+		Name:        name,
+		Description: description,
+		Price:       price,
+		Quantity:    quantity,
+		CategoryID:  categoryID,
+	}
+	return p.repository.Patch(&product)
+}
+
 func (p *ProductService) Create(name string, description string, price float64, quantity int64, categoryID int64,
 ) error {
 	product, err := entity.NewProduct(
