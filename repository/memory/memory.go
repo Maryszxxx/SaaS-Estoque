@@ -2,12 +2,12 @@ package memory
 
 import (
 	"errors"
+	"saas-estoque/database"
 	"saas-estoque/entity"
 )
 
 type ProductMemoryRepository struct {
-	products map[int64]entity.Product
-	nextID   int64
+	products *database.PostgresProductRepository
 }
 
 func NewProductMemoryRepository() *ProductMemoryRepository {

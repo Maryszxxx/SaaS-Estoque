@@ -1,6 +1,7 @@
 package main
 
 import (
+	"saas-estoque/database"
 	"saas-estoque/handler"
 	"saas-estoque/repository/memory"
 	"saas-estoque/usercase"
@@ -9,7 +10,8 @@ import (
 )
 
 func main() {
-	repo := memory.NewProductMemoryRepository()
+	repo := database.NewPostgresProductRepository(db)
+
 	service := usercase.NewProductService(repo)
 
 	h := handler.NewProductHandler(service)
