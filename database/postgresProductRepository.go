@@ -2,11 +2,40 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
+	"os"
 	"saas-estoque/entity"
 )
 
 type PostgresProductRepository struct {
 	db *sql.DB
+}
+
+var (
+	DB_HOST     = os.Getenv("DB_HOST")
+	DB_USERNAME = os.Getenv("DB_USERNAME")
+	DB_PASSWORD = os.Getenv("DB_PASSWORD")
+	DB_DATABASE = os.Getenv("DB_DATABASE")
+	DB_PORT     = os.Getenv("DB_PORT")
+	DBNAME      = os.Getenv("DB_NAME")
+	SSLMODE     = os.Getenv("SSLMODE")
+)
+
+func ConnectPostgresProductRepository() *sql.DB {
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s sslmode=%s", DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE, DB_PORT,
+	)
+
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := db.Ping(); err != nil {
+		log.Fatal(err)
+	}
+	return db
 }
 
 func NewPostgresProductRepository(db *sql.DB) *PostgresProductRepository {
@@ -42,7 +71,7 @@ func (r *PostgresProductRepository) Save(product *entity.Product) error {
 	).Scan(&product.ID)
 }
 
-func (r *PostgresProductRepository) FindById(id int64) (*entity.Product, error) {
+func (r *PostgresProductRepository) FindByID(id int64) (*entity.Product, error) {
 	return nil, nil
 }
 
