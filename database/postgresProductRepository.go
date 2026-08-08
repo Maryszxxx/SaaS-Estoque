@@ -2,38 +2,55 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"saas-estoque/entity"
+	"time"
+
+	"github.com/joho/godotenv"
 )
 
+type PatchProductRequest struct {
+	Name        *string
+	Description *string
+	Price       *float64
+	Quantity    *int64
+	CategoryID  *int64
+}
 type PostgresProductRepository struct {
 	db *sql.DB
 }
 
-var (
-	DB_HOST     = os.Getenv("DB_HOST")
-	DB_USERNAME = os.Getenv("DB_USERNAME")
-	DB_PASSWORD = os.Getenv("DB_PASSWORD")
-	DB_DATABASE = os.Getenv("DB_DATABASE")
-	DB_PORT     = os.Getenv("DB_PORT")
-	DBNAME      = os.Getenv("DB_NAME")
-	SSLMODE     = os.Getenv("SSLMODE")
-)
-
 func ConnectPostgresProductRepository() *sql.DB {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	DB_HOST := os.Getenv("DB_HOST")
+	DB_USERNAME := os.Getenv("DB_USERNAME")
+	DB_PASSWORD := os.Getenv("DB_PASSWORD")
+	DB_DATABASE := os.Getenv("DB_DATABASE")
+	DB_PORT := os.Getenv("DB_PORT")
+
 	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s sslmode=%s", DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE, DB_PORT,
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		DB_HOST,
+		DB_PORT,
+		DB_USERNAME,
+		DB_PASSWORD,
+		DB_DATABASE,
 	)
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("erro ao abrir conexão com banco de dados", err)
 	}
 
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		log.Fatal("erro ao conectar no banco de dados", err)
 	}
 	return db
 }
@@ -72,25 +89,150 @@ func (r *PostgresProductRepository) Save(product *entity.Product) error {
 }
 
 func (r *PostgresProductRepository) FindByID(id int64) (*entity.Product, error) {
-	return nil, nil
+	query := `SELECT id, description, name, price, quantity, created_at, updated_at, category_id FROM products WHERE id = $1`
+
+	product := &entity.Product{}
+
+	err := r.db.QueryRow(query, id).Scan(&product.ID, &product.Description, &product.Name, &product.Price, &product.Quantity, &product.CreatedAt, &product.UpdatedAt, &product.CategoryID)
+	if err != nil {
+		return nil, err
+	}
+	return product, nil
+
 }
 
 func (r *PostgresProductRepository) Delete(id int64) error {
+	query := `DELETE FROM products WHERE id = $1`
+	results, err := r.db.Exec(query, id)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := results.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return errors.New("no product found with that id")
+	}
+
 	return nil
 }
 
 func (r *PostgresProductRepository) FindAll() ([]entity.Product, error) {
-	return nil, nil
+	query := `SELECT id, description, name, price, quantity, created_at, updated_at, category_id FROM products`
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var products []entity.Product
+
+	for rows.Next() {
+		product := entity.Product{}
+
+		err := rows.Scan(&product.ID, &product.Description, &product.Name, &product.Price, &product.Quantity, &product.CreatedAt, &product.UpdatedAt, &product.CategoryID)
+
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, product)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return products, nil
+
 }
 
-func (r *PostgresProductRepository) Patch(product *entity.Product) error {
+func (r *PostgresProductRepository) Patch(id int64, name *string, description *string, price *float64, quantity *int64, categoryID *int64) error {
+
+	query := `UPDATE products SET`
+	var args []interface{}
+	param := 1
+
+	if name != nil {
+		query += fmt.Sprintf("name = $%d", param)
+		args = append(args, *name)
+		param++
+	}
+
+	if description != nil {
+		if len(args) > 0 {
+			query += ", "
+		}
+		query += fmt.Sprintf("description = $%d", param)
+		args = append(args, *description)
+		param++
+	}
+
+	if price != nil {
+		if len(args) > 0 {
+			query += ", "
+		}
+		query += fmt.Sprintf("price = $%d", param)
+		args = append(args, *price)
+		param++
+	}
+
+	if quantity != nil {
+		if len(args) > 0 {
+			query += ", "
+		}
+
+		query += fmt.Sprintf("quantity = $%d", param)
+		args = append(args, *quantity)
+		param++
+	}
+
+	if categoryID != nil {
+		if len(args) > 0 {
+			query += ", "
+		}
+
+		query += fmt.Sprintf("category_id = $%d", param)
+		args = append(args, *categoryID)
+		param++
+	}
+
+	if len(query) > 0 {
+		query += ";"
+	}
+	query += "updated_at = NOW()"
+
+	query += fmt.Sprintf(" WHERE id = $%d", param)
+	args = append(args, id)
+
+	result, err := r.db.Exec(query, args...)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return errors.New("no product found with that id")
+	}
 	return nil
 }
+
 func (r *PostgresProductRepository) Update(product *entity.Product) error {
+	query := `UPDATE products SET name = $1, description = $2, price = $3, quantity = $4, category_id = $5, updated_at = $6 WHERE id = $7 `
+	result, err := r.db.Exec(query, product.Name, product.Description, product.Price, product.Quantity, product.CategoryID, time.Now(), product.ID)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return errors.New("product no found")
+	}
 	return nil
 }
-
-//func NewProductMemoryRepository() *ProductMemoryRepository {
-//	return &ProductMemoryRepository{products: make(map[int64]entity.Product)}
-
-//Save(product *entity.Product) error

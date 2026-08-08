@@ -5,11 +5,14 @@ import (
 	"saas-estoque/handler"
 	"saas-estoque/usercase"
 
+	_ "github.com/lib/pq"
+
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	db := database.ConnectPostgresProductRepository()
+	defer db.Close()
 
 	repo := database.NewPostgresProductRepository(db)
 
