@@ -59,7 +59,7 @@ func NewProduct(name, description string, price float64, quantity, categoryID in
 	if price <= 0 {
 		return nil, errors.New("the price must be greater than zero")
 	}
-	if quantity < 0 {
+	if quantity <= 0 {
 		return nil, errors.New("the quantity can't be negative")
 	}
 	if categoryID <= 0 {
