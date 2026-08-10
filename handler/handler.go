@@ -28,6 +28,18 @@ type ProductHandler struct {
 	service *usercase.ProductService
 }
 
+// Create godoc
+// @Summary Cria um novo produto
+// @Description Cria um produto no estoque
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param product body CreateProductRequest true "Dados do produto"
+// @Success 201 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /products [post]
+
 // POST
 func (h *ProductHandler) Create(c *gin.Context) {
 	product := &CreateProductRequest{}
@@ -49,6 +61,18 @@ func (h *ProductHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Product created successfully"})
 }
 
+// Patch godoc
+// @Summary Atualiza parcialmente um produto
+// @Description Atualiza somente os campos enviados
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "ID do produto"
+// @Param product body PatchProductRequest true "Campos para atualização"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /products/{id} [patch]
 // PATCH
 func (h *ProductHandler) Patch(c *gin.Context) {
 	product := &PatchProductRequest{}
@@ -82,6 +106,18 @@ func (h *ProductHandler) Patch(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Product updated successfully"})
 }
 
+// Update godoc
+// @Summary Atualiza um produto
+// @Description Atualiza todos os campos de um produto
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "ID do produto"
+// @Param product body CreateProductRequest true "Dados do produto"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /products/{id} [put]
 // PUT
 func (h *ProductHandler) Update(c *gin.Context) {
 	product := &CreateProductRequest{}
@@ -114,6 +150,16 @@ func (h *ProductHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "product updated successfully"})
 }
 
+// Delete godoc
+// @Summary Remove um produto
+// @Description Remove um produto pelo ID
+// @Tags products
+// @Produce json
+// @Param id path int true "ID do produto"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /products/{id} [delete]
 // DELETE
 func (h *ProductHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
@@ -135,6 +181,16 @@ func (h *ProductHandler) Delete(c *gin.Context) {
 
 }
 
+// Get godoc
+// @Summary Lista todos os produtos
+// @Description Retorna todos os produtos cadastrados
+// @Tags products
+// @Produce json
+// @Success 200 {array} entity.Product
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /products [get]
+
 // GetAll
 func (h *ProductHandler) Get(c *gin.Context) {
 	products, err := h.service.FindAll()
@@ -151,6 +207,16 @@ func (h *ProductHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, products)
 }
 
+// GetById godoc
+// @Summary Busca produto por ID
+// @Description Retorna um produto específico
+// @Tags products
+// @Produce json
+// @Param id path int true "ID do produto"
+// @Success 200 {object} entity.Product
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /products/{id} [get]
 // GetById
 func (h *ProductHandler) GetById(c *gin.Context) {
 	id := c.Param("id")
@@ -173,5 +239,9 @@ func (h *ProductHandler) GetById(c *gin.Context) {
 
 }
 func NewProductHandler(service *usercase.ProductService) *ProductHandler {
-	return &ProductHandler{service: service}
+
+	return &ProductHandler{
+		service: service,
+	}
+
 }

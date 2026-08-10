@@ -8,8 +8,6 @@ import (
 	"os"
 	"saas-estoque/entity"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 type PatchProductRequest struct {
@@ -24,11 +22,6 @@ type PostgresProductRepository struct {
 }
 
 func ConnectPostgresProductRepository() *sql.DB {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
 	DB_HOST := os.Getenv("DB_HOST")
 	DB_USERNAME := os.Getenv("DB_USERNAME")
 	DB_PASSWORD := os.Getenv("DB_PASSWORD")
@@ -90,11 +83,13 @@ func (r *PostgresProductRepository) Save(product *entity.Product) error {
 
 func (r *PostgresProductRepository) FindByID(id int64) (*entity.Product, error) {
 	query := `SELECT id, description, name, price, quantity, created_at, updated_at, category_id FROM products WHERE id = $1`
-
 	product := &entity.Product{}
 
 	err := r.db.QueryRow(query, id).Scan(&product.ID, &product.Description, &product.Name, &product.Price, &product.Quantity, &product.CreatedAt, &product.UpdatedAt, &product.CategoryID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("no rows found")
+		}
 		return nil, err
 	}
 	return product, nil
