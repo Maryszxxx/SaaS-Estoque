@@ -28,6 +28,17 @@ type ProductHandler struct {
 	service *usercase.ProductService
 }
 
+type UserHandler struct {
+	userService *usercase.UserService
+}
+
+type UserRequest struct {
+	Name         string `json:"name" binding:"required,min=4,max=90"`
+	Email        string `json:"email" binding:"required,email"`
+	PasswordHash string `json:"password_hash" binding:"required"`
+	Role         string `json:"role" binding:"required"`
+}
+
 // Create godoc
 // @Summary Cria um novo produto
 // @Description Cria um produto no estoque
@@ -244,4 +255,27 @@ func NewProductHandler(service *usercase.ProductService) *ProductHandler {
 		service: service,
 	}
 
+}
+
+// implementação de login usuario
+
+func (h *UserHandler) CreateUser(c *gin.Context) {
+	user := &UserRequest{}
+	err := c.ShouldBindJSON(user)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	err = h.userService.CreateUser(
+		user.Name,
+		user.Email,
+		user.PasswordHash,
+		user.Role,
+	)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "Product created successfully"})
 }

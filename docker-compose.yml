@@ -12,7 +12,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:16
     container_name: saas-postgres
@@ -24,5 +26,10 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ${DB_DATABASE}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 volumes:
   postgres_data:

@@ -89,6 +89,7 @@ func NewUser(name, email, passwordHash, role string) (*User, error) {
 	if passwordHash == "" {
 		return nil, errors.New("password is required")
 	}
+
 	switch role {
 	case RoleAdmin, RoleEmployee:
 	default:

@@ -28,3 +28,9 @@ func Get(c *gin.Context) {
 func GetById(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"method": "GET"})
 }
+
+// implementação de login
+
+func PostUser(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"method": "POST"})
+}

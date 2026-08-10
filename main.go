@@ -50,6 +50,19 @@ func main() {
 	r.PATCH("/products/:id", h.Patch) //patch
 	r.DELETE("/products/:id", h.Delete)
 
+	// implementando user
+
+	//db := database.ConnectPostgresProductRepository()
+	//defer db.Close()
+	//
+	//repo := database.NewPostgresProductRepository(db)
+	//
+	//service := usercase.NewProductService(repo)
+	//
+	//h := handler.NewProductHandler(service)
+	//
+	//r := gin.Default()
+
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	r.Run(":8080")

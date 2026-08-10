@@ -8,6 +8,8 @@ import (
 	"os"
 	"saas-estoque/entity"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type PatchProductRequest struct {
@@ -22,6 +24,11 @@ type PostgresProductRepository struct {
 }
 
 func ConnectPostgresProductRepository() *sql.DB {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Println("Error loading .env file")
+	}
+
 	DB_HOST := os.Getenv("DB_HOST")
 	DB_USERNAME := os.Getenv("DB_USERNAME")
 	DB_PASSWORD := os.Getenv("DB_PASSWORD")
@@ -42,10 +49,18 @@ func ConnectPostgresProductRepository() *sql.DB {
 		log.Fatal("erro ao abrir conexão com banco de dados", err)
 	}
 
-	if err := db.Ping(); err != nil {
-		log.Fatal("erro ao conectar no banco de dados", err)
+	for i := 0; i < 10; i++ {
+		err := db.Ping()
+
+		if err == nil {
+			log.Println("Connected to database")
+			return db
+		}
+		log.Println("aguardando postgresql")
+		time.Sleep(2 * time.Second)
 	}
-	return db
+	log.Fatal("erro ao conectar com banco de dados", err)
+	return nil
 }
 
 func NewPostgresProductRepository(db *sql.DB) *PostgresProductRepository {
