@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	db := database.ConnectPostgresProductRepository()
+	db := database.ConnectPostgresRepository()
 	defer db.Close()
 
 	repo := database.NewPostgresProductRepository(db)
@@ -52,16 +52,18 @@ func main() {
 
 	// implementando user
 
-	//db := database.ConnectPostgresProductRepository()
-	//defer db.Close()
-	//
-	//repo := database.NewPostgresProductRepository(db)
-	//
-	//service := usercase.NewProductService(repo)
-	//
-	//h := handler.NewProductHandler(service)
-	//
-	//r := gin.Default()
+	repoUser := database.NewPostgresUserRepository(db)
+
+	serviceUser := usercase.NewUserService(repoUser)
+
+	hUser := handler.NewUserHandler(serviceUser)
+
+	r.POST("/users", hUser.Create)
+	r.GET("/users", hUser.FindByEmail)
+	r.GET("/users/:id", hUser.FindById)
+	r.DELETE("/users/:id", hUser.Delete)
+	r.PATCH("/users/:id", hUser.Patch)
+	r.PATCH("/users/:id/:password", hUser.ChangePassword)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

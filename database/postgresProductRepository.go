@@ -23,7 +23,7 @@ type PostgresProductRepository struct {
 	db *sql.DB
 }
 
-func ConnectPostgresProductRepository() *sql.DB {
+func ConnectPostgresRepository() *sql.DB {
 	err := godotenv.Load(".env")
 	if err != nil {
 		log.Println("Error loading .env file")

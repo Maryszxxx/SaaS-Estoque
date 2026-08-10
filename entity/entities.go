@@ -93,7 +93,7 @@ func NewUser(name, email, passwordHash, role string) (*User, error) {
 	switch role {
 	case RoleAdmin, RoleEmployee:
 	default:
-		return nil, errors.New("role is required")
+		return nil, errors.New("role is required or invalid role")
 	}
 	return user, nil
 }

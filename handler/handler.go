@@ -33,10 +33,15 @@ type UserHandler struct {
 }
 
 type UserRequest struct {
-	Name         string `json:"name" binding:"required,min=4,max=90"`
-	Email        string `json:"email" binding:"required,email"`
-	PasswordHash string `json:"password_hash" binding:"required"`
-	Role         string `json:"role" binding:"required"`
+	Name     string `json:"name" binding:"required,min=4,max=90"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+	Role     string `json:"role" binding:"required"`
+}
+type PatchUserRequest struct {
+	Name  *string `json:"name" binding:"omitempty,min=4,max=90"`
+	Email *string `json:"email" binding:"omitempty,email"`
+	Role  *string `json:"role" binding:"omitempty"`
 }
 
 // Create godoc
@@ -259,17 +264,17 @@ func NewProductHandler(service *usercase.ProductService) *ProductHandler {
 
 // implementação de login usuario
 
-func (h *UserHandler) CreateUser(c *gin.Context) {
+func (h *UserHandler) Create(c *gin.Context) {
 	user := &UserRequest{}
 	err := c.ShouldBindJSON(user)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err = h.userService.CreateUser(
+	err = h.userService.Create(
 		user.Name,
 		user.Email,
-		user.PasswordHash,
+		user.Password,
 		user.Role,
 	)
 
@@ -277,5 +282,116 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"message": "Product created successfully"})
+	c.JSON(http.StatusCreated, gin.H{"message": "User created successfully"})
+}
+func NewUserHandler(serviceUser *usercase.UserService) *UserHandler {
+
+	return &UserHandler{
+		userService: serviceUser,
+	}
+
+}
+
+func (h *UserHandler) FindByEmail(c *gin.Context) {
+	email := c.Query("email")
+	if email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email is required"})
+		return
+	}
+	users, err := h.userService.FindByEmail(email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, users)
+
+}
+
+func (h *UserHandler) FindById(c *gin.Context) {
+	id := c.Param("id")
+	idInt, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	user, err := h.userService.FindById(idInt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, user)
+
+}
+
+func (h *UserHandler) Delete(c *gin.Context) {
+	id := c.Param("id")
+	idInt, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	err = h.userService.Delete(idInt)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+}
+
+func (u *UserHandler) Patch(c *gin.Context) {
+	user := &PatchUserRequest{}
+
+	if err := c.ShouldBindJSON(user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	id := c.Param("id")
+
+	idInt, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	err = u.userService.Patch(
+		idInt,
+		user.Name,
+		user.Email,
+		user.Role,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
+}
+
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+func (u *UserHandler) ChangePassword(c *gin.Context) {
+	request := &ChangePasswordRequest{}
+
+	if err := c.ShouldBindJSON(request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	id := c.Param("id")
+
+	idInt, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	err = u.userService.ChangePassword(idInt, &request.OldPassword, &request.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
+
 }
