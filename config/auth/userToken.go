@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"os"
 	"saas-estoque/entity"
 	"time"
@@ -30,4 +31,28 @@ func GenerateToken(user *entity.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(secret))
 
+}
+
+func VerifyToken(tokenString string) (*Claims, error) {
+	secret := os.Getenv("JWT_SECRET_KEY")
+
+	claims := &Claims{}
+
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(token *jwt.Token) (interface{}, error) {
+			if token.Method != jwt.SigningMethodHS256 {
+				return nil, errors.New("invalid signing method")
+			}
+			return []byte(secret), nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	if !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+	return claims, nil
 }
