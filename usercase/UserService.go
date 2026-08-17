@@ -39,10 +39,6 @@ func (p *UserService) Create(name, email, password, role string) error {
 	return p.userRepository.Save(user)
 }
 
-func (u *UserService) FindByEmail(email string) (*entity.User, error) {
-	return u.userRepository.FindByEmail(email)
-}
-
 func (u *UserService) FindById(ID int64) (*entity.User, error) {
 	return u.userRepository.FindByID(ID)
 }
@@ -64,7 +60,7 @@ func (u *UserService) Update(ID int64, name, email, password, role string) error
 		Role:         role,
 		PasswordHash: string(hash),
 	}
-	return u.userRepository.Save(user)
+	return u.userRepository.Update(user)
 }
 
 // patch sem senha
@@ -83,13 +79,13 @@ func (u *UserService) Patch(ID int64, name *string, email *string, role *string)
 
 	if role != nil {
 		switch *role {
-		case entity.RoleAdmin:
+		case entity.RoleAdmin, entity.RoleEmployee:
 			user.Role = *role
 		default:
 			return errors.New("invalid role")
 		}
 	}
-	return u.userRepository.Save(user)
+	return u.userRepository.Update(user)
 }
 
 // patch apenas pra senha
@@ -99,6 +95,9 @@ func (u *UserService) ChangePassword(ID int64, newPassword, oldPassword *string)
 
 	if err != nil {
 		return err
+	}
+	if oldPassword == nil || newPassword == nil {
+		return errors.New("password is required")
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(*oldPassword)); err != nil {
 		return errors.New("Senha atual incorreta")
@@ -114,4 +113,19 @@ func (u *UserService) ChangePassword(ID int64, newPassword, oldPassword *string)
 	}
 	user.PasswordHash = string(newHash)
 	return u.userRepository.Update(user)
+}
+
+func (u *UserService) FindByEmail(email string) (*entity.User, error) {
+	return u.userRepository.FindByEmail(email)
+}
+
+func (u *UserService) Login(email, password string) (*entity.User, error) {
+	user, err := u.userRepository.FindByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		return nil, errors.New("email or password is invalid")
+	}
+	return user, nil
 }

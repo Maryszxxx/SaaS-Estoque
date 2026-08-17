@@ -36,7 +36,7 @@ func ValidateUserError(validatorErr error) *entity.RestErr {
 	} else if errors.As(validatorErr, &jsonValidationErr) {
 		errorsCauses := []entity.Causes{}
 
-		for _, e := range validatorErr.(validator.ValidationErrors) {
+		for _, e := range jsonValidationErr {
 			cause := entity.Causes{
 				Field:   e.Field(),
 				Message: e.Translate(transl),
@@ -45,9 +45,6 @@ func ValidateUserError(validatorErr error) *entity.RestErr {
 		}
 
 		return entity.NewBadRequestValidationError("Invalid JSON for field ", errorsCauses)
-
-	} else {
-		return entity.NewBadRequestError("Invalid JSON body")
 	}
-
+	return entity.NewBadRequestError(validatorErr.Error())
 }

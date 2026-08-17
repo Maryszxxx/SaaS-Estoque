@@ -1,6 +1,8 @@
 package repository
 
-import "saas-estoque/entity"
+import (
+	"saas-estoque/entity"
+)
 
 type UserRepository interface {
 	Save(user *entity.User) error
@@ -8,4 +10,6 @@ type UserRepository interface {
 	FindByEmail(email string) (*entity.User, error)
 	Update(product *entity.User) error
 	Delete(id int64) error
+	EncryptPassword()
+	GenerateToken() (string, error)
 }

@@ -34,3 +34,23 @@ func NewBadRequestValidationError(message string, Causes []Causes) *RestErr {
 		Causes:  Causes,
 	}
 }
+
+func NewInternalServerError(message string) *RestErr {
+	return &RestErr{
+		Message: message,
+		Err:     "internal_server_error",
+		Code:    http.StatusInternalServerError,
+		Causes:  []Causes{},
+	}
+}
+
+// NewUnauthorizedError cria um erro 401 (Unauthorized),
+// usado quando falta autenticação válida.
+func NewUnauthorizedError(message string) *RestErr {
+	return &RestErr{
+		Message: message,
+		Err:     "unauthorized",
+		Code:    http.StatusUnauthorized,
+		Causes:  []Causes{},
+	}
+}
