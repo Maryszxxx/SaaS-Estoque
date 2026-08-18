@@ -36,7 +36,7 @@ type UserHandler struct {
 type UserRequest struct {
 	Name     string `json:"name" binding:"required,min=4,max=90"`
 	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required, min=6, containsany=0123456789, containsany=ABCDEFGHIJKLMNOPQRSTUVWXYZ, containsany=abcdefghijklmnopqrstuvwxyz"`
+	Password string `json:"password" binding:"required,min=6,containsany=0123456789,containsany=ABCDEFGHIJKLMNOPQRSTUVWXYZ,containsany=abcdefghijklmnopqrstuvwxyz"`
 	Role     string `json:"role" binding:"required"`
 }
 type PatchUserRequest struct {
@@ -269,10 +269,10 @@ func (h *UserHandler) Create(c *gin.Context) {
 	user := &UserRequest{}
 	err := c.ShouldBindJSON(user)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "error in create users"})
 		return
 	}
-	err = h.userService.Create(
+	newUser, err := h.userService.Create(
 		user.Name,
 		user.Email,
 		user.Password,
@@ -280,11 +280,21 @@ func (h *UserHandler) Create(c *gin.Context) {
 	)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error in create user"})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"message": "User created successfully"})
+	token, err := auth.GenerateToken(newUser)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not generate token"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "User created successfully",
+		"token":   token,
+	})
 }
+
 func NewUserHandler(serviceUser *usercase.UserService) *UserHandler {
 
 	return &UserHandler{

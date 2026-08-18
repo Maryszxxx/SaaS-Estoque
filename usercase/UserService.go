@@ -20,11 +20,11 @@ func NewUserService(repository repository.UserRepository) *UserService {
 
 // implementando user
 
-func (p *UserService) Create(name, email, password, role string) error {
+func (p *UserService) Create(name, email, password, role string) (*entity.User, error) {
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	user, err := entity.NewUser(
 		name,
@@ -33,10 +33,10 @@ func (p *UserService) Create(name, email, password, role string) error {
 		role,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return p.userRepository.Save(user)
+	return user, nil
 }
 
 func (u *UserService) FindById(ID int64) (*entity.User, error) {

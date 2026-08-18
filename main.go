@@ -92,13 +92,34 @@ func main() {
 
 	r.POST("/login", hUser.Login)
 
-	r.GET("/users", hUser.FindByEmail)
-	r.GET("/users/:id", hUser.FindById)
+	r.GET("/users",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(entity.RoleAdmin),
+		hUser.FindByEmail,
+	)
 
-	r.DELETE("/users/:id", hUser.Delete)
-	r.PATCH("/users/:id", hUser.Patch)
-	r.PATCH("/users/:id/password", hUser.ChangePassword)
+	r.GET("/users/:id",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(entity.RoleAdmin),
+		hUser.FindById,
+	)
 
+	r.DELETE("/users/:id",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(entity.RoleAdmin),
+		hUser.Delete,
+	)
+
+	r.PATCH("/users/:id",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(entity.RoleAdmin),
+		hUser.Patch,
+	)
+
+	r.PATCH("/users/:id/password",
+		auth.AuthMiddleware(),
+		hUser.ChangePassword,
+	)
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	r.Run(":8080")
