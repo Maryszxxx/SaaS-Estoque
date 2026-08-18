@@ -92,6 +92,8 @@ func main() {
 
 	r.POST("/login", hUser.Login)
 
+	r.POST("/refresh", hUser.Refresh)
+
 	r.GET("/users",
 		auth.AuthMiddleware(),
 		auth.RequiredRole(entity.RoleAdmin),
@@ -116,7 +118,7 @@ func main() {
 		hUser.Patch,
 	)
 
-	r.PATCH("/users/:id/password",
+	r.PATCH("/users/password",
 		auth.AuthMiddleware(),
 		hUser.ChangePassword,
 	)

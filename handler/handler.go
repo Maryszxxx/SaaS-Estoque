@@ -264,6 +264,48 @@ func NewProductHandler(service *usercase.ProductService) *ProductHandler {
 }
 
 // implementação de login usuario
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+func (h *UserHandler) Refresh(c *gin.Context) {
+	var req RefreshRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "refresh token is required",
+		})
+		return
+	}
+
+	claims, err := auth.VerifyRefreshToken(req.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "invalid or expired refresh token",
+		})
+		return
+	}
+
+	user, err := h.userService.FindById(claims.UserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "user not found",
+		})
+		return
+	}
+
+	accessToken, err := auth.GenerateToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "could not generate access token",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token": accessToken,
+	})
+}
 
 func (h *UserHandler) Create(c *gin.Context) {
 	user := &UserRequest{}
@@ -288,10 +330,16 @@ func (h *UserHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not generate token"})
 		return
 	}
+	refreshToken, err := auth.GenerateRefreshToken(newUser)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not generate refresh token"})
+		return
+	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "User created successfully",
-		"token":   token,
+		"message":       "User created successfully",
+		"token":         token,
+		"refresh_token": refreshToken,
 	})
 }
 
@@ -391,16 +439,20 @@ func (u *UserHandler) ChangePassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	id := c.Param("id")
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
+		return
+	}
 
-	idInt, err := strconv.ParseInt(id, 10, 64)
-	if err != nil {
+	userIDInt, ok := userID.(int64)
+	if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	err = u.userService.ChangePassword(idInt, &request.OldPassword, &request.NewPassword)
+	err := u.userService.ChangePassword(userIDInt, &request.OldPassword, &request.NewPassword)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
@@ -430,5 +482,13 @@ func (h *UserHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not generate token"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	refreshToken, err := auth.GenerateRefreshToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not generate token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":         token,
+		"refresh_token": refreshToken})
 }
