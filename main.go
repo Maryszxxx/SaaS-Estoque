@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
 	"saas-estoque/config/auth"
 	"saas-estoque/database"
@@ -19,18 +20,31 @@ import (
 )
 
 func main() {
+
 	db := database.ConnectPostgresRepository()
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(db)
 
+	r := SetupRouter(db)
+
+	if err := r.Run(":8080"); err != nil {
+		panic(err)
+	}
+}
+
+func SetupRouter(db *sql.DB) *gin.Engine {
 	repo := database.NewPostgresProductRepository(db)
-
 	service := usercase.NewProductService(repo)
-
 	h := handler.NewProductHandler(service)
 
 	r := gin.Default()
 
 	r.GET("/health", func(c *gin.Context) {
+
 		if err := db.Ping(); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
 				"status":   "unhealthy",
@@ -44,7 +58,7 @@ func main() {
 			"database": "up",
 		})
 	})
-
+	//products
 	r.POST("/products",
 		auth.AuthMiddleware(),
 		auth.RequiredRole(entity.RoleAdmin, entity.RoleEmployee),
@@ -80,7 +94,7 @@ func main() {
 		h.Delete,
 	)
 
-	// implementando user
+	//USERS
 
 	repoUser := database.NewPostgresUserRepository(db)
 
@@ -122,8 +136,9 @@ func main() {
 		auth.AuthMiddleware(),
 		hUser.ChangePassword,
 	)
+	//SWAGGER
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	r.Run(":8080")
+	return r
 
 }
