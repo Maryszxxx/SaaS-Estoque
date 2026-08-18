@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"database/sql"
 	"saas-estoque/database"
 	"saas-estoque/entity"
 	"saas-estoque/usercase"
@@ -9,18 +10,27 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func TestUserService_Create(t *testing.T) {
+func setupTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+
 	dsn := "host=localhost port=5433 user=postgres password=postgres dbname=saas_estoque_test sslmode=disable"
 
 	db, err := database.ConnectPostgres(dsn)
 	if err != nil {
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
+
 	t.Cleanup(func() {
 		if err := db.Close(); err != nil {
 			t.Errorf("failed to close database: %v", err)
 		}
 	})
+
+	return db
+}
+
+func TestUserService_Create(t *testing.T) {
+	db := setupTestDB(t)
 
 	repository := database.NewPostgresUserRepository(db)
 	service := usercase.NewUserService(repository)
@@ -70,18 +80,7 @@ func TestUserService_Create(t *testing.T) {
 }
 
 func TestUserService_Login(t *testing.T) {
-	dsn := "host=localhost port=5433 user=postgres password=postgres dbname=saas_estoque_test sslmode=disable"
-
-	db, err := database.ConnectPostgres(dsn)
-	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
-	}
-
-	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
-			t.Errorf("failed to close database: %v", err)
-		}
-	})
+	db := setupTestDB(t)
 
 	repository := database.NewPostgresUserRepository(db)
 	service := usercase.NewUserService(repository)
@@ -128,18 +127,7 @@ func TestUserService_Login(t *testing.T) {
 	}
 }
 func TestUserService_Patch(t *testing.T) {
-	dsn := "host=localhost port=5433 user=postgres password=postgres dbname=saas_estoque_test sslmode=disable"
-
-	db, err := database.ConnectPostgres(dsn)
-	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
-	}
-
-	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
-			t.Errorf("failed to close database: %v", err)
-		}
-	})
+	db := setupTestDB(t)
 
 	repository := database.NewPostgresUserRepository(db)
 	service := usercase.NewUserService(repository)
@@ -204,18 +192,7 @@ func TestUserService_Patch(t *testing.T) {
 	}
 }
 func TestUserService_Patch_InvalidRole(t *testing.T) {
-	dsn := "host=localhost port=5433 user=postgres password=postgres dbname=saas_estoque_test sslmode=disable"
-
-	db, err := database.ConnectPostgres(dsn)
-	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
-	}
-
-	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
-			t.Errorf("failed to close database: %v", err)
-		}
-	})
+	db := setupTestDB(t)
 
 	repository := database.NewPostgresUserRepository(db)
 	service := usercase.NewUserService(repository)
