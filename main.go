@@ -97,7 +97,7 @@ func main() {
 
 	r.DELETE("/users/:id", hUser.Delete)
 	r.PATCH("/users/:id", hUser.Patch)
-	r.PATCH("/users/:id/:password", hUser.ChangePassword)
+	r.PATCH("/users/:id/password", hUser.ChangePassword)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
