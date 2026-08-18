@@ -301,3 +301,93 @@ func TestUserService_ChangePassword(t *testing.T) {
 		t.Fatal("expected login with old password to fail")
 	}
 }
+func TestUserService_Login_InvalidPassword(t *testing.T) {
+	db := setupTestDB(t)
+
+	repository := database.NewPostgresUserRepository(db)
+	service := usercase.NewUserService(repository)
+
+	user, err := service.Create(
+		"Maria Invalid Password",
+		"invalid-password@test.com",
+		"123456",
+		entity.RoleEmployee,
+	)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	t.Cleanup(func() {
+		if err := repository.Delete(user.ID); err != nil {
+			t.Errorf("failed to cleanup user: %v", err)
+		}
+	})
+
+	_, err = service.Login(
+		"invalid-password@test.com",
+		"senha-errada",
+	)
+
+	if err == nil {
+		t.Fatal("expected login with invalid password to fail")
+	}
+}
+func TestUserService_Login_UserNotFound(t *testing.T) {
+	db := setupTestDB(t)
+
+	repository := database.NewPostgresUserRepository(db)
+	service := usercase.NewUserService(repository)
+
+	_, err := service.Login(
+		"naoexiste@test.com",
+		"123456",
+	)
+
+	if err == nil {
+		t.Fatal("expected login with nonexistent user to fail")
+	}
+}
+func TestUserService_ChangePassword_InvalidOldPassword(t *testing.T) {
+	db := setupTestDB(t)
+
+	repository := database.NewPostgresUserRepository(db)
+	service := usercase.NewUserService(repository)
+
+	user, err := service.Create(
+		"Maria Invalid Old Password",
+		"invalid-old-password@test.com",
+		"123456",
+		entity.RoleEmployee,
+	)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	t.Cleanup(func() {
+		if err := repository.Delete(user.ID); err != nil {
+			t.Errorf("failed to cleanup user: %v", err)
+		}
+	})
+
+	oldPassword := "senha-errada"
+	newPassword := "654321"
+
+	err = service.ChangePassword(
+		user.ID,
+		&oldPassword,
+		&newPassword,
+	)
+
+	if err == nil {
+		t.Fatal("expected change password with invalid old password to fail")
+	}
+
+	_, err = service.Login(
+		"invalid-old-password@test.com",
+		"123456",
+	)
+
+	if err != nil {
+		t.Fatal("original password should remain valid")
+	}
+}
