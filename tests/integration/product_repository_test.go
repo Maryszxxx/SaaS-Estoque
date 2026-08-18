@@ -2,6 +2,8 @@ package integration
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -12,7 +14,14 @@ import (
 )
 
 func TestProductRepository(t *testing.T) {
-	dsn := "host=localhost port=5433 user=postgres password=postgres dbname=saas_estoque_test sslmode=disable"
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		os.Getenv("TEST_DB_HOST"),
+		os.Getenv("TEST_DB_PORT"),
+		os.Getenv("TEST_DB_USER"),
+		os.Getenv("TEST_DB_PASSWORD"),
+		os.Getenv("TEST_DB_NAME"),
+	)
 
 	db, err := database.ConnectPostgres(dsn)
 	if err != nil {

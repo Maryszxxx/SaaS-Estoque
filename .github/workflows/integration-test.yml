@@ -29,22 +29,24 @@ jobs:
           for i in {1..30}; do
             if docker exec saas-postgres-test pg_isready -U postgres -d saas_estoque_test; then
               echo "PostgreSQL is ready"
-              break
+              exit 0
             fi
 
             echo "Waiting for PostgreSQL..."
             sleep 2
           done
 
-      - name: Run migrations
-        run: |
-          cat database/migrations/001_init.sql | \
-          docker exec -i saas-postgres-test \
-          psql -U postgres -d saas_estoque_test
+          echo "PostgreSQL did not become ready"
+          docker logs saas-postgres-test
+          exit 1
 
       - name: Run integration tests
         env:
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5433
+          TEST_DB_USER: postgres
           TEST_DB_PASSWORD: postgres
+          TEST_DB_NAME: saas_estoque_test
         run: go test ./tests/integration -v
 
       - name: Stop PostgreSQL
