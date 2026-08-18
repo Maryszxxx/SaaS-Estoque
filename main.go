@@ -2,8 +2,10 @@ package main
 
 import (
 	"net/http"
+	"saas-estoque/config/auth"
 	"saas-estoque/database"
 	_ "saas-estoque/docs"
+	"saas-estoque/entity"
 	"saas-estoque/handler"
 	"saas-estoque/usercase"
 
@@ -43,12 +45,40 @@ func main() {
 		})
 	})
 
-	r.POST("/products", h.Create)
-	r.GET("/products", h.Get)         //findAll
-	r.GET("/products/:id", h.GetById) //findById
-	r.PUT("/products/:id", h.Update)  //put
-	r.PATCH("/products/:id", h.Patch) //patch
-	r.DELETE("/products/:id", h.Delete)
+	r.POST("/products",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(entity.RoleAdmin, entity.RoleEmployee),
+		h.Create,
+	)
+
+	r.GET("/products",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(entity.RoleAdmin, entity.RoleEmployee),
+		h.Get,
+	)
+
+	r.GET("/products/:id",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(entity.RoleAdmin, entity.RoleEmployee),
+		h.GetById,
+	)
+
+	r.PUT("/products/:id",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(entity.RoleAdmin, entity.RoleEmployee),
+		h.Update,
+	)
+	r.PATCH("/products/:id",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(entity.RoleAdmin, entity.RoleEmployee),
+		h.Patch,
+	)
+
+	r.DELETE("/products/:id",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(entity.RoleAdmin),
+		h.Delete,
+	)
 
 	// implementando user
 
@@ -59,8 +89,12 @@ func main() {
 	hUser := handler.NewUserHandler(serviceUser)
 
 	r.POST("/users", hUser.Create)
+
+	r.POST("/login", hUser.Login)
+
 	r.GET("/users", hUser.FindByEmail)
 	r.GET("/users/:id", hUser.FindById)
+
 	r.DELETE("/users/:id", hUser.Delete)
 	r.PATCH("/users/:id", hUser.Patch)
 	r.PATCH("/users/:id/:password", hUser.ChangePassword)

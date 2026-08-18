@@ -46,7 +46,7 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-func RequiredRole(requiredRole string) gin.HandlerFunc {
+func RequiredRole(requiredRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		role, exists := c.Get("role")
@@ -60,15 +60,23 @@ func RequiredRole(requiredRole string) gin.HandlerFunc {
 		roleString, ok := role.(string)
 		if !ok {
 			c.JSON(http.StatusForbidden, gin.H{
-				"error": "role is required",
+				"error": "invalid role format",
 			})
 			c.Abort()
 			return
 		}
+		authorized := false
 
-		if roleString != requiredRole {
+		for _, requiredRole := range requiredRoles {
+			if roleString == requiredRole {
+				authorized = true
+				break
+			}
+
+		}
+		if !authorized {
 			c.JSON(http.StatusForbidden, gin.H{
-				"error": "role is invalid",
+				"error": "role is required",
 			})
 			c.Abort()
 			return

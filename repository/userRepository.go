@@ -10,6 +10,4 @@ type UserRepository interface {
 	FindByEmail(email string) (*entity.User, error)
 	Update(product *entity.User) error
 	Delete(id int64) error
-	EncryptPassword()
-	GenerateToken() (string, error)
 }

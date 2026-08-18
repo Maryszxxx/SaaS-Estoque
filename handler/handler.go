@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"saas-estoque/config/auth"
 	"saas-estoque/usercase"
 	"strconv"
 
@@ -394,4 +395,30 @@ func (u *UserHandler) ChangePassword(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
 
+}
+
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+func (h *UserHandler) Login(c *gin.Context) {
+	var req = LoginRequest{}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	user, err := h.userService.Login(req.Email, req.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "email or password is incorrect"})
+		return
+	}
+
+	token, err := auth.GenerateToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not generate token"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"token": token})
 }
