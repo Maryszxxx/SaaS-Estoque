@@ -94,7 +94,7 @@ func main() {
 
 	r.POST("/refresh", hUser.Refresh)
 
-	r.GET("/users",
+	r.GET("/users/email",
 		auth.AuthMiddleware(),
 		auth.RequiredRole(entity.RoleAdmin),
 		hUser.FindByEmail,

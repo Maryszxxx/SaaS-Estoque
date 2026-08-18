@@ -26,12 +26,17 @@ func (p *UserService) Create(name, email, password, role string) (*entity.User, 
 	if err != nil {
 		return nil, err
 	}
+
 	user, err := entity.NewUser(
 		name,
 		email,
 		string(hash),
 		role,
 	)
+	if err != nil {
+		return nil, err
+	}
+	err = p.userRepository.Save(user)
 	if err != nil {
 		return nil, err
 	}
@@ -89,21 +94,19 @@ func (u *UserService) Patch(ID int64, name *string, email *string, role *string)
 }
 
 // patch apenas pra senha
-func (u *UserService) ChangePassword(ID int64, newPassword, oldPassword *string) error {
+func (u *UserService) ChangePassword(userID int64, oldPassword *string, newPassword *string) error {
 
-	user, err := u.userRepository.FindByID(ID)
-
+	user, err := u.userRepository.FindByID(userID)
 	if err != nil {
 		return err
 	}
+
 	if oldPassword == nil || newPassword == nil {
 		return errors.New("password is required")
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(*oldPassword)); err != nil {
-		return errors.New("Senha atual incorreta")
-
+		return errors.New("old password is invalid")
 	}
-
 	newHash, err := bcrypt.GenerateFromPassword(
 		[]byte(*newPassword), bcrypt.DefaultCost,
 	)

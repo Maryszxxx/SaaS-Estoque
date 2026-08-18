@@ -353,13 +353,14 @@ func NewUserHandler(serviceUser *usercase.UserService) *UserHandler {
 
 func (h *UserHandler) FindByEmail(c *gin.Context) {
 	email := c.Query("email")
+
 	if email == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "email is required"})
 		return
 	}
 	users, err := h.userService.FindByEmail(email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, users)
