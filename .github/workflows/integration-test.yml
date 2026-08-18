@@ -1,0 +1,52 @@
+name: Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.4'
+
+      - name: Start PostgreSQL
+        run: docker compose -f docker-compose.test.yml up -d
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            if docker exec saas-postgres-test pg_isready -U postgres -d saas_estoque_test; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+      - name: Run migrations
+        run: |
+          cat database/migrations/001_init.sql | \
+          docker exec -i saas-postgres-test \
+          psql -U postgres -d saas_estoque_test
+
+      - name: Run integration tests
+        env:
+          TEST_DB_PASSWORD: postgres
+        run: go test ./tests/integration -v
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
