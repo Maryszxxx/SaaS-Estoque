@@ -1,8 +1,7 @@
 package integration
 
 import (
-	"fmt"
-	"os"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -13,22 +12,18 @@ import (
 )
 
 func TestProductRepository(t *testing.T) {
-	password := os.Getenv("TEST_DB_PASSWORD")
-
-	if password == "" {
-		t.Fatal("TEST_DB_PASSWORD não definida")
-	}
-
-	dsn := fmt.Sprintf(
-		"host=localhost port=5432 user=postgres password=%s dbname=Saas-Estoque-Test sslmode=disable",
-		password,
-	)
+	dsn := "host=localhost port=5433 user=postgres password=postgres dbname=saas_estoque_test sslmode=disable"
 
 	db, err := database.ConnectPostgres(dsn)
 	if err != nil {
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(db)
 
 	repository := database.NewPostgresProductRepository(db)
 
