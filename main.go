@@ -88,15 +88,12 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 
 	r := gin.Default()
 
-	r.GET("/health", func(c *gin.Context) {
-
+	health := func(c *gin.Context) {
 		if err := db.Ping(); err != nil {
-
 			c.JSON(http.StatusServiceUnavailable, gin.H{
 				"status":   "unhealthy",
 				"database": "down",
 			})
-
 			return
 		}
 
@@ -104,7 +101,10 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 			"status":   "ok",
 			"database": "up",
 		})
-	})
+	}
+
+	r.GET("/health", health)
+	r.HEAD("/health", health)
 
 	// PRODUCTS
 

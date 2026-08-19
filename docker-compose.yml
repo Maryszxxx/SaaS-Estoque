@@ -31,6 +31,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      GIN_MODE: release
 
     depends_on:
       postgres:
