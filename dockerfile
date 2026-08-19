@@ -8,14 +8,27 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o main .
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o /app/main .
 
-#imaqemfinal hein
-FROM debian:bookworm-slim
+
+FROM alpine:3.22
 
 WORKDIR /app
 
+RUN apk add --no-cache \
+    ca-certificates \
+    wget
+
+RUN addgroup -S app && adduser -S app -G app
+
 COPY --from=builder /app/main .
+
+RUN chown app:app /app/main
+
+USER app
 
 EXPOSE 8080
 

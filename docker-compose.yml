@@ -1,35 +1,91 @@
 services:
 
-  api:
-    build: .
-    container_name: saas-api
+  caddy:
+    image: caddy:2-alpine
+    container_name: saas-caddy
+    restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+    container_name: saas-api
+    restart: unless-stopped
+
+    expose:
+      - "8080"
+
     environment:
       DB_HOST: postgres
       DB_PORT: ${DB_PORT}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+
     depends_on:
       postgres:
         condition: service_healthy
 
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "-q",
+          "http://localhost:8080/health"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   postgres:
     image: postgres:16
     container_name: saas-postgres
+    restart: unless-stopped
+
     environment:
       POSTGRES_DB: ${DB_DATABASE}
-      POSTGRES_USER: postgres
+      POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "5432:5432"
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d ${DB_DATABASE}" ]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:
