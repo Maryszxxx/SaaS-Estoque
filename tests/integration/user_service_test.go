@@ -241,18 +241,7 @@ func TestUserService_Patch_InvalidRole(t *testing.T) {
 }
 
 func TestUserService_ChangePassword(t *testing.T) {
-	dsn := "host=localhost port=5433 user=postgres password=postgres dbname=saas_estoque_test sslmode=disable"
-
-	db, err := database.ConnectPostgres(dsn)
-	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
-	}
-
-	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
-			t.Errorf("failed to close database: %v", err)
-		}
-	})
+	db := setupTestDB(t)
 
 	repository := database.NewPostgresUserRepository(db)
 	service := usercase.NewUserService(repository)
