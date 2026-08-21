@@ -1,0 +1,211 @@
+definitions:
+  entity.Product:
+    properties:
+      categoryID:
+        format: int64
+        type: integer
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        format: int64
+        type: integer
+      name:
+        type: string
+      price:
+        format: float64
+        type: number
+      quantity:
+        format: int64
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  handler.CreateProductRequest:
+    properties:
+      category_id:
+        type: integer
+      description:
+        minLength: 4
+        type: string
+      name:
+        maxLength: 90
+        minLength: 4
+        type: string
+      price:
+        type: number
+      quantity:
+        type: integer
+    required:
+      - category_id
+      - description
+      - name
+      - price
+      - quantity
+    type: object
+  handler.PatchProductRequest:
+    properties:
+      category_id:
+        type: integer
+      description:
+        minLength: 4
+        type: string
+      name:
+        maxLength: 90
+        minLength: 4
+        type: string
+      price:
+        type: number
+      quantity:
+        type: integer
+    type: object
+info:
+  contact: { }
+  version:
+  title:
+paths:
+  /products/{id}:
+    delete:
+      description: Remove um produto pelo ID
+      parameters:
+        - description: ID do produto
+          in: path
+          name: id
+          required: true
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Remove um produto
+      tags:
+        - products
+    get:
+      description: Retorna um produto específico
+      parameters:
+        - description: ID do produto
+          in: path
+          name: id
+          required: true
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Product'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Busca produto por ID
+      tags:
+        - products
+    patch:
+      consumes:
+        - application/json
+      description: Atualiza somente os campos enviados
+      parameters:
+        - description: ID do produto
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: Campos para atualização
+          in: body
+          name: product
+          required: true
+          schema:
+            $ref: '#/definitions/handler.PatchProductRequest'
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Atualiza parcialmente um produto
+      tags:
+        - products
+    put:
+      consumes:
+        - application/json
+      description: Atualiza todos os campos de um produto
+      parameters:
+        - description: ID do produto
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: Dados do produto
+          in: body
+          name: product
+          required: true
+          schema:
+            $ref: '#/definitions/handler.CreateProductRequest'
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Atualiza um produto
+      tags:
+        - products
+swagger: "2.0"
