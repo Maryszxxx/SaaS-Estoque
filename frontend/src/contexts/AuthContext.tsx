@@ -1,8 +1,0 @@
-import { createContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { login as loginRequest } from '../services/auth'
-import { tokenStorage } from '../services/tokenStorage'
-import type { AuthUser, LoginCredentials, UserRole } from '../types/auth'
-interface AuthContextValue { user: AuthUser | null; isAuthenticated: boolean; isLoading: boolean; login: (credentials: LoginCredentials) => Promise<void>; logout: () => void }
-export const AuthContext = createContext<AuthContextValue | undefined>(undefined)
-function getUserFromToken(token: string | null): AuthUser | null { if (!token) return null; try { const payload = JSON.parse(atob(token.split('.')[1])) as { id?: number; role?: UserRole; exp?: number }; if (!payload.id || !payload.role || (payload.exp ?? 0) * 1000 <= Date.now()) return null; return { id: payload.id, role: payload.role } } catch { return null } }
-export function AuthProvider({ children }: { children: ReactNode }) { const [user, setUser] = useState<AuthUser | null>(null); const [isLoading, setIsLoading] = useState(true); useEffect(() => { setUser(getUserFromToken(tokenStorage.getAccessToken())); setIsLoading(false) }, []); const value = useMemo<AuthContextValue>(() => ({ user, isAuthenticated: user !== null, isLoading, login: async (credentials) => { const { token, refresh_token } = await loginRequest(credentials); const authenticatedUser = getUserFromToken(token); if (!authenticatedUser) throw new Error('A API retornou um token inválido.'); tokenStorage.save(token, refresh_token); setUser(authenticatedUser) }, logout: () => { tokenStorage.clear(); setUser(null) } }), [user, isLoading]); return <AuthContext.Provider value={value}>{children}</AuthContext.Provider> }

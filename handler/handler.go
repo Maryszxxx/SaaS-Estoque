@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"saas-estoque/config/auth"
+	"saas-estoque/database"
 	"saas-estoque/usercase"
 	"strconv"
 
@@ -12,7 +14,7 @@ import (
 
 type CreateProductRequest struct {
 	Name        string  `json:"name" binding:"required,min=4,max=90"`
-	Description string  `json:"description" binding:"required,min=4"`
+	Description string  `json:"description" binding:"omitempty,min=4"`
 	Price       float64 `json:"price" binding:"required,gt=0"`
 	Quantity    int64   `json:"quantity" binding:"required,gt=0"`
 	CategoryID  int64   `json:"category_id" binding:"required,gt=0"`
@@ -31,6 +33,13 @@ type ProductHandler struct {
 
 type UserHandler struct {
 	userService *usercase.UserService
+}
+
+type UserProfileResponse struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Role  string `json:"role"`
 }
 
 type UserRequest struct {
@@ -56,6 +65,125 @@ type PatchUserRequest struct {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /products [post]
+
+type CreateCategory struct {
+	Name string `json:"name" binding:"required,min=4,max=90"`
+}
+type PatchCategoryRequest struct {
+	Name *string `json:"name" binding:"omitempty,min=2,max=90"`
+}
+type CategoryHandler struct {
+	service *usercase.CategoryService
+}
+
+func NewCategoryHandler(service *usercase.CategoryService) *CategoryHandler {
+	return &CategoryHandler{service: service}
+}
+
+func (d *CategoryHandler) Create(c *gin.Context) {
+	category := &CreateCategory{}
+	err := c.ShouldBindJSON(&category)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	createdCategory, err := d.service.Create(category.Name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"category": createdCategory})
+}
+func (d *CategoryHandler) Patch(c *gin.Context) {
+	category := &PatchCategoryRequest{}
+
+	err := c.ShouldBindJSON(category)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
+	id := c.Param("id")
+
+	idInt, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+	}
+	err = d.service.Update(
+		idInt,
+		category.Name,
+	)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"category": "Category updated successfully"})
+}
+
+func (d *CategoryHandler) Delete(c *gin.Context) {
+	id := c.Param("id")
+	idInt, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	err = d.service.Delete(idInt)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"category": "Category deleted successfully"})
+}
+
+// restore category
+func (d *CategoryHandler) Restore(c *gin.Context) {
+	idInt, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	if err := d.service.Restore(idInt); err != nil {
+		if errors.Is(err, usercase.ErrRestoreWindowExpired) {
+			c.JSON(http.StatusGone, gin.H{"error": "window expired for this category"})
+			return
+		}
+		c.JSON(http.StatusNotFound, gin.H{"error": "deleted category not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"category": "Category restored successfully"})
+}
+
+func (d *CategoryHandler) FindbyID(c *gin.Context) {
+	id := c.Param("id")
+
+	idInt, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	categoryByID, err := d.service.FindByID(idInt)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, categoryByID)
+}
+func (d *CategoryHandler) FindAll(c *gin.Context) {
+	category, err := d.service.FindAll()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if len(category) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Not category found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, category)
+}
 
 // POST
 func (h *ProductHandler) Create(c *gin.Context) {
@@ -96,6 +224,10 @@ func (h *ProductHandler) Patch(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(product); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if product.Description != nil && len(*product.Description) > 0 && len(*product.Description) < 4 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "description must have at least 4 characters or be empty"})
 		return
 	}
 
@@ -168,8 +300,8 @@ func (h *ProductHandler) Update(c *gin.Context) {
 }
 
 // Delete godoc
-// @Summary Remove um produto
-// @Description Remove um produto pelo ID
+// @Summary Move um produto para a lixeira
+// @Description Faz a exclusão lógica de um produto pelo ID
 // @Tags products
 // @Produce json
 // @Param id path int true "ID do produto"
@@ -191,11 +323,40 @@ func (h *ProductHandler) Delete(c *gin.Context) {
 	err = h.service.Delete(idInt)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"method": "DELETE"})
+	c.JSON(http.StatusOK, gin.H{"message": "Product moved to trash successfully"})
 
+}
+
+// Restore godoc
+// @Summary Restaura um produto da lixeira
+// @Description Restaura um produto removido há no máximo 30 dias
+// @Tags products
+// @Produce json
+// @Param id path int true "ID do produto"
+// @Success 200 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 410 {object} map[string]string
+// @Router /products/{id}/restore [patch]
+func (h *ProductHandler) Restore(c *gin.Context) {
+	idInt, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid product id"})
+		return
+	}
+
+	if err := h.service.Restore(idInt); err != nil {
+		if errors.Is(err, usercase.ErrRestoreWindowExpired) {
+			c.JSON(http.StatusGone, gin.H{"error": "the restore period for this product has expired"})
+			return
+		}
+		c.JSON(http.StatusNotFound, gin.H{"error": "deleted product not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Product restored successfully"})
 }
 
 // Get godoc
@@ -217,7 +378,7 @@ func (h *ProductHandler) Get(c *gin.Context) {
 	}
 
 	if len(products) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"method": "GET"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Not product found"})
 		return
 	}
 
@@ -241,7 +402,6 @@ func (h *ProductHandler) GetById(c *gin.Context) {
 	idInt, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		fmt.Println("erro no id")
 		return
 	}
 
@@ -322,6 +482,10 @@ func (h *UserHandler) Create(c *gin.Context) {
 	)
 
 	if err != nil {
+		if errors.Is(err, database.ErrEmailAlreadyExists) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "email already exists"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error in create user"})
 		return
 	}
@@ -381,6 +545,43 @@ func (h *UserHandler) FindById(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, user)
 
+}
+
+func (h *UserHandler) GetMe(c *gin.Context) {
+	userID, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
+		return
+	}
+
+	user, err := h.userService.FindById(userID.(int64))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+	c.JSON(http.StatusOK, UserProfileResponse{ID: user.ID, Name: user.Name, Email: user.Email, Role: user.Role})
+}
+
+func (h *UserHandler) PatchMe(c *gin.Context) {
+	request := &PatchUserRequest{}
+	if err := c.ShouldBindJSON(request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if request.Role != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "role cannot be changed from the profile"})
+		return
+	}
+	userID, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
+		return
+	}
+	if err := h.userService.Patch(userID.(int64), request.Name, request.Email, nil); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update profile"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Profile updated successfully"})
 }
 
 func (h *UserHandler) Delete(c *gin.Context) {
@@ -492,4 +693,113 @@ func (h *UserHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"token":         token,
 		"refresh_token": refreshToken})
+}
+
+// movement stock
+type StockMovementRequestHandler struct {
+	service *usercase.StockMovementService
+}
+
+type CreateStockMovementRequest struct {
+	ProductID int64 `json:"product_id" binding:"required,gt=0"`
+	Quantity  int64 `json:"quantity" binding:"required,gt=0"`
+}
+
+var req CreateStockMovementRequest
+
+func (s *StockMovementRequestHandler) StockIn(c *gin.Context) {
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
+		return
+	}
+	userIDInt, ok := userID.(int64)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	err := s.service.StockIn(
+		req.ProductID,
+		req.Quantity,
+		userIDInt,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Stock movement successfully"})
+}
+
+func (s *StockMovementRequestHandler) StockOut(c *gin.Context) {
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
+		return
+	}
+	userIDInt, ok := userID.(int64)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	err := s.service.StockOut(
+		req.ProductID,
+		req.Quantity,
+		userIDInt,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Stock removed successfully"})
+}
+
+type AdjustmentRequest struct {
+	ProductID   int64 `json:"product_id" binding:"required,gt=0"`
+	NewQuantity int64 `json:"new_quantity" binding:"required,gte=0"`
+}
+
+var req1 AdjustmentRequest
+
+func (s *StockMovementRequestHandler) Adjustment(c *gin.Context) {
+	if err := c.ShouldBindJSON(&req1); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
+		return
+	}
+	userIDInt, ok := userID.(int64)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	err := s.service.Adjustment(
+		req1.ProductID,
+		req1.NewQuantity,
+		userIDInt,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "stock adjusted successfully",
+	})
 }

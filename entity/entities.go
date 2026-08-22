@@ -22,14 +22,16 @@ type User struct {
 }
 
 type Product struct {
-	ID          int64
-	Description string
-	Name        string
-	Price       float64
-	Quantity    int64
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	CategoryID  int64
+	ID           int64
+	Description  string
+	Name         string
+	Price        float64
+	Quantity     int64
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	CategoryID   int64
+	CategoryName string
+	DeletedAt    *time.Time
 }
 
 type Category struct {
@@ -37,8 +39,32 @@ type Category struct {
 	Name      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	DeletedAt *time.Time
 }
 
+type StockMovement struct {
+	ID        int64
+	ProductID int64
+	Quantity  int64
+	Type      string
+	CreatedAt time.Time
+	UserID    int64
+}
+
+func NewCategoryProduct(name string) (*Category, error) {
+	now := time.Now()
+
+	category := &Category{
+		Name:      name,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if name == "" {
+		return nil, errors.New("name is required")
+	}
+
+	return category, nil
+}
 func NewProduct(name, description string, price float64, quantity, categoryID int64) (*Product, error) {
 	now := time.Now()
 	product := &Product{
@@ -53,9 +79,6 @@ func NewProduct(name, description string, price float64, quantity, categoryID in
 	if name == "" {
 		return nil, errors.New("name is required")
 	}
-	if description == "" {
-		return nil, errors.New("description is required")
-	}
 	if price <= 0 {
 		return nil, errors.New("the price must be greater than zero")
 	}
@@ -63,7 +86,7 @@ func NewProduct(name, description string, price float64, quantity, categoryID in
 		return nil, errors.New("the quantity can't be negative")
 	}
 	if categoryID <= 0 {
-		return nil, errors.New("CategoryID must be greater than zero")
+		return nil, errors.New("CategoryID is required")
 	}
 	return product, nil
 }

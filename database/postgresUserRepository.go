@@ -5,6 +5,8 @@ import (
 	"errors"
 	"saas-estoque/entity"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 // implementando user
@@ -12,6 +14,8 @@ import (
 type PostgresUserRepository struct {
 	db *sql.DB
 }
+
+var ErrEmailAlreadyExists = errors.New("email already exists")
 
 func (r *PostgresUserRepository) FindByID(id int64) (*entity.User, error) {
 	query := "SELECT id, name, email, role, password_hash, created_at, updated_at  FROM users WHERE id = $1"
@@ -96,7 +100,7 @@ func (r *PostgresUserRepository) Save(user *entity.User) error {
 		RETURNING id
 	`
 
-	return r.db.QueryRow(
+	err := r.db.QueryRow(
 		query,
 		user.Name,
 		user.Email,
@@ -105,4 +109,16 @@ func (r *PostgresUserRepository) Save(user *entity.User) error {
 		user.CreatedAt,
 		user.UpdatedAt,
 	).Scan(&user.ID)
+
+	if err != nil {
+		var pqErr *pq.Error
+
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return ErrEmailAlreadyExists
+		}
+
+		return err
+	}
+
+	return nil
 }

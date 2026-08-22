@@ -110,15 +110,25 @@ func TestProductRepository(t *testing.T) {
 		)
 	}
 
-	// DELETE
-	err = repository.Delete(product.ID)
+	// SOFT DELETE
+	err = repository.SoftDelete(product.ID)
 	if err != nil {
-		t.Fatalf("failed to delete product: %v", err)
+		t.Fatalf("failed to soft delete product: %v", err)
 	}
 
-	// VERIFY DELETE
+	// VERIFY ACTIVE QUERIES IGNORE DELETED PRODUCTS
 	_, err = repository.FindByID(product.ID)
 	if err == nil {
 		t.Fatal("expected error when finding deleted product")
+	}
+
+	// RESTORE
+	err = repository.Restore(product.ID)
+	if err != nil {
+		t.Fatalf("failed to restore product: %v", err)
+	}
+
+	if _, err = repository.FindByID(product.ID); err != nil {
+		t.Fatalf("expected restored product to be active: %v", err)
 	}
 }

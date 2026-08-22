@@ -167,6 +167,34 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 		h.Delete,
 	)
 
+	r.PATCH(
+		"/products/:id/restore",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(
+			entity.RoleAdmin,
+		),
+		h.Restore,
+	)
+
+	// CATEGORIES
+
+	repoCategory := database.NewPostgresCategoryRepository(db)
+	serviceCategory := usercase.NewCategoryService(repoCategory)
+	hCategory := handler.NewCategoryHandler(serviceCategory)
+
+	r.POST(
+		"/categories",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(entity.RoleAdmin, entity.RoleEmployee),
+		hCategory.Create,
+	)
+	r.GET(
+		"/categories",
+		auth.AuthMiddleware(),
+		auth.RequiredRole(entity.RoleAdmin, entity.RoleEmployee),
+		hCategory.FindAll,
+	)
+
 	// USERS
 
 	repoUser := database.NewPostgresUserRepository(db)
@@ -180,6 +208,9 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 	r.POST("/login", hUser.Login)
 
 	r.POST("/refresh", hUser.Refresh)
+
+	r.GET("/users/me", auth.AuthMiddleware(), hUser.GetMe)
+	r.PATCH("/users/me", auth.AuthMiddleware(), hUser.PatchMe)
 
 	r.GET(
 		"/users/email",

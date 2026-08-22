@@ -29,7 +29,10 @@ func ConnectPostgres(dsn string) (*sql.DB, error) {
 	}
 
 	if err := db.Ping(); err != nil {
-		db.Close()
+		err := db.Close()
+		if err != nil {
+			return nil, err
+		}
 		return nil, err
 	}
 
@@ -113,16 +116,18 @@ func (r *PostgresProductRepository) Save(product *entity.Product) error {
 func (r *PostgresProductRepository) FindByID(id int64) (*entity.Product, error) {
 	query := `
 		SELECT
-			id,
-			description,
-			name,
-			price,
-			quantity,
-			created_at,
-			updated_at,
-			category_id
-		FROM products
-		WHERE id = $1
+			p.id,
+			p.description,
+			p.name,
+			p.price,
+			p.quantity,
+			p.created_at,
+			p.updated_at,
+			p.category_id,
+			COALESCE(c.name, '')
+		FROM products p
+		LEFT JOIN categories c ON c.id = p.category_id
+		WHERE p.id = $1 AND p.deleted_at IS NULL
 	`
 
 	product := &entity.Product{}
@@ -136,6 +141,7 @@ func (r *PostgresProductRepository) FindByID(id int64) (*entity.Product, error) 
 		&product.CreatedAt,
 		&product.UpdatedAt,
 		&product.CategoryID,
+		&product.CategoryName,
 	)
 
 	if err != nil {
@@ -149,8 +155,12 @@ func (r *PostgresProductRepository) FindByID(id int64) (*entity.Product, error) 
 	return product, nil
 }
 
-func (r *PostgresProductRepository) Delete(id int64) error {
-	query := `DELETE FROM products WHERE id = $1`
+func (r *PostgresProductRepository) SoftDelete(id int64) error {
+	query := `
+		UPDATE products
+		SET deleted_at = NOW(), updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL
+	`
 
 	results, err := r.db.Exec(query, id)
 	if err != nil {
@@ -163,7 +173,7 @@ func (r *PostgresProductRepository) Delete(id int64) error {
 	}
 
 	if rowsAffected == 0 {
-		return errors.New("no product found with that id")
+		return errors.New("no active product found with that id")
 	}
 
 	return nil
@@ -172,15 +182,18 @@ func (r *PostgresProductRepository) Delete(id int64) error {
 func (r *PostgresProductRepository) FindAll() ([]entity.Product, error) {
 	query := `
 		SELECT
-			id,
-			description,
-			name,
-			price,
-			quantity,
-			created_at,
-			updated_at,
-			category_id
-		FROM products
+			p.id,
+			p.description,
+			p.name,
+			p.price,
+			p.quantity,
+			p.created_at,
+			p.updated_at,
+			p.category_id,
+			COALESCE(c.name, '')
+		FROM products p
+		LEFT JOIN categories c ON c.id = p.category_id
+		WHERE p.deleted_at IS NULL
 	`
 
 	rows, err := r.db.Query(query)
@@ -188,7 +201,12 @@ func (r *PostgresProductRepository) FindAll() ([]entity.Product, error) {
 		return nil, err
 	}
 
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+
+		}
+	}(rows)
 
 	var products []entity.Product
 
@@ -204,6 +222,7 @@ func (r *PostgresProductRepository) FindAll() ([]entity.Product, error) {
 			&product.CreatedAt,
 			&product.UpdatedAt,
 			&product.CategoryID,
+			&product.CategoryName,
 		)
 
 		if err != nil {
@@ -230,7 +249,7 @@ func (r *PostgresProductRepository) Update(product *entity.Product) error {
 			quantity = $4,
 			category_id = $5,
 			updated_at = $6
-		WHERE id = $7
+		WHERE id = $7 AND deleted_at IS NULL
 	`
 
 	result, err := r.db.Exec(
@@ -255,6 +274,51 @@ func (r *PostgresProductRepository) Update(product *entity.Product) error {
 
 	if rowsAffected == 0 {
 		return errors.New("product not found")
+	}
+
+	return nil
+}
+
+func (r *PostgresProductRepository) FindDeletedByID(id int64) (*entity.Product, error) {
+	query := `
+		SELECT id, description, name, price, quantity, created_at, updated_at, category_id, deleted_at
+		FROM products
+		WHERE id = $1 AND deleted_at IS NOT NULL
+	`
+
+	product := &entity.Product{}
+	err := r.db.QueryRow(query, id).Scan(
+		&product.ID, &product.Description, &product.Name, &product.Price,
+		&product.Quantity, &product.CreatedAt, &product.UpdatedAt,
+		&product.CategoryID, &product.DeletedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, errors.New("deleted product not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return product, nil
+}
+
+func (r *PostgresProductRepository) Restore(id int64) error {
+	query := `
+		UPDATE products
+		SET deleted_at = NULL, updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NOT NULL
+	`
+
+	result, err := r.db.Exec(query, id)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return errors.New("deleted product not found")
 	}
 
 	return nil
